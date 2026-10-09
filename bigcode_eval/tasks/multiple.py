@@ -41,7 +41,7 @@ _CITATION = """
 LANGUAGES = [
     "py",
     "sh",
-    "clj"
+    "clj",
     "cpp",
     "cs",
     "d",
@@ -53,7 +53,7 @@ LANGUAGES = [
     "js",
     "jl",
     "lua",
-    "ml"
+    "ml",
     "pl",
     "php",
     "r",
@@ -151,8 +151,9 @@ class GeneralMultiPLE(Task):
             for i, doc in enumerate(self.get_dataset())
             if i < len(generations)
         ]
-        # a common temp dir for all the problems
-        temp_dir = tempfile.gettempdir()
+        # a fresh temp dir for all the problems of this run, so that results
+        # files left by earlier runs are not counted in the pass@k below
+        temp_dir = tempfile.mkdtemp(prefix="multiple-")
         list_files = []
         for (prompt_name, generation, reference) in zip(
             prompts_names, generations, references
