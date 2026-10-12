@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from bigcode_eval import base
-from bigcode_eval.tasks import apps, multiple, quixbugs
+from bigcode_eval.tasks import apps, instruct_wizard_humaneval, multiple, quixbugs
 from bigcode_eval.tasks.custom_metrics import beyond_eval
 
 
@@ -101,3 +101,13 @@ def test_mercury_metric_with_a_difficulty_left_out_by_limit(monkeypatch):
     assert results["Average_pass@1"] == 1.0
     assert results["Easy_beyond@1"] == pytest.approx(0.5)
     assert not any(key.startswith(("Medium_", "Hard_")) for key in results)
+
+
+def test_wizard_humaneval_keeps_code_block_without_closing_fence():
+    task = _bare_task(instruct_wizard_humaneval.HumanEvalWizardCoder)
+    # generation stopped (max length or end of sequence) before the closing fence
+    generation = "### Response:\nHere is the function:\n```python\ndef add(a, b):\n    return a + b\n"
+
+    assert task.postprocess_generation(generation, 0) == "def add(a, b):\n    return a + b"
+    # a closed block is still cut at its fence
+    assert task.postprocess_generation(generation + "```\nDone.", 0) == "def add(a, b):\n    return a + b"

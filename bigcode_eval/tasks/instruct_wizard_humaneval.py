@@ -74,11 +74,11 @@ class HumanEvalWizardCoder(Task):
             def_line = completion.index("```python")
             completion = completion[def_line:].strip()
             completion = completion.replace("```python", "")
-            try:
+            # the closing fence is missing when generation stopped before it
+            if "```" in completion:
                 next_line = completion.index("```")
-                completion = completion[:next_line].strip()
-            except:
-                a += 1
+                completion = completion[:next_line]
+            completion = completion.strip()
         if '__name__ == "__main__"' in completion:
             next_line = completion.index('if __name__ == "__main__":')
             completion = completion[:next_line].strip()

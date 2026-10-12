@@ -61,7 +61,13 @@ class Evaluator:
 
         curr_generations = []  # list[list[str | None] | None]
         if intermediate_generations:
-            curr_generations = [gen for gen in intermediate_generations if gen]
+            # intermediate files are saved every k generation steps, and a task spans
+            # n_samples / batch_size steps, so the last saved task can be incomplete:
+            # resume from the first task that is missing samples
+            for gen in intermediate_generations:
+                if not gen or len(gen) < self.args.n_samples:
+                    break
+                curr_generations.append(gen)
             n_tasks -= len(curr_generations)
         intermediate_save_generations_path = f"{os.path.splitext(self.args.save_generations_path)[0]}_{task_name}_intermediate.json"
         curr_sample_idx = len(curr_generations)

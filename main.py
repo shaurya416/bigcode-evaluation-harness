@@ -215,12 +215,15 @@ def parse_args():
 
 def pattern_match(patterns, source_list):
     """Returns a list containing all values of the source_list that
-    match at least one of the patterns"""
-    task_names = set()
+    match at least one of the patterns, in the order of the patterns.
+    The order must not vary between runs or processes: tasks are matched
+    by position to --load_generations_intermediate_paths."""
+    task_names = []
     for pattern in patterns:
         for matching in fnmatch.filter(source_list, pattern):
-            task_names.add(matching)
-    return list(task_names)
+            if matching not in task_names:
+                task_names.append(matching)
+    return task_names
 
 
 def get_gpus_max_memory(max_memory, num_gpus):
