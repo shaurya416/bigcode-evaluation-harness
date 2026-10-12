@@ -1,7 +1,11 @@
 import json
 import tempfile
 
-from bigcode_eval.tasks import apps, multiple
+import pytest
+
+from bigcode_eval import base
+from bigcode_eval.tasks import apps, multiple, quixbugs
+from bigcode_eval.tasks.custom_metrics import beyond_eval
 
 
 def _bare_task(task_cls):
@@ -59,3 +63,41 @@ def test_multiple_pass_at_k_ignores_results_left_in_temp_dir(monkeypatch, tmp_pa
     results = task.process_results([["def f():\n    return 1"]], ["assert f() == 2"])
 
     assert results == {"pass@1": 0.0}
+
+
+def test_quixbugs_codex_prompt_keeps_the_generated_fix(monkeypatch):
+    doc = {"name": "gcd", "buggy_program": "def gcd(a, b):\n    return gcd(a % b, b)", "tests": ""}
+    monkeypatch.setattr(base, "load_dataset", lambda **kwargs: {"train": [doc]})
+    task = quixbugs.QuixBugs(prompt="prompt_codex")
+    prompt = task.get_prompt(doc)
+    fix = "\ndef gcd(a, b):\n    if b == 0:\n        return a\n    return gcd(b, a % b)\n"
+    completion = fix + "### fix the bug in the following function\n"
+    # generation stops as soon as the completion contains a stop word
+    end = min(completion.find(w) + len(w) for w in task.stop_words if w in completion)
+
+    assert task.postprocess_generation(prompt + completion[:end], 0) == fix
+
+
+def test_mercury_metric_with_a_difficulty_left_out_by_limit(monkeypatch):
+    # canonical solutions run in 0.1s and 0.3s, the generation in 0.2s
+    runtimes = iter([0.1, 0.3] + [0.2] * 5)
+
+    def fake_run_sample(sample):
+        return dict(result="passed", runtime=next(runtimes), index=sample["solution_index"], error="None")
+
+    monkeypatch.setattr(beyond_eval.Sandbox, "run_sample", staticmethod(fake_run_sample))
+    instance = {
+        "solutions": [{"solution": "a"}, {"solution": "b"}],
+        "convert_offline": "",
+        "evaluate_offline": "",
+        "entry_point": "f",
+        "test_cases": "[]",
+        "difficulty": "Easy",
+    }
+
+    results = beyond_eval.compute_beyond_eval([["generation"]], [instance])
+
+    assert results["Easy_pass@1"] == 1.0
+    assert results["Average_pass@1"] == 1.0
+    assert results["Easy_beyond@1"] == pytest.approx(0.5)
+    assert not any(key.startswith(("Medium_", "Hard_")) for key in results)

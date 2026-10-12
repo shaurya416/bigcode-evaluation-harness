@@ -94,6 +94,21 @@ class Evaluator:
 
         generations, references = self.generate_text(task_name, intermediate_generations=intermediate_generations)
 
+        # the metrics pair generations with references and skip problems without
+        # generations, so a short or partial generations file would be scored as
+        # if it covered every selected problem
+        if len(generations) != len(references):
+            raise ValueError(
+                f"Found generations for {len(generations)} problems of {task_name}, but {len(references)} problems were selected. "
+                "When using --load_generations_path, pass the --limit and --limit_start used to produce the file."
+            )
+        missing = [i for i, gens in enumerate(generations) if not gens]
+        if missing:
+            raise ValueError(
+                f"{len(missing)} problems of {task_name} have no generations (indices {missing[:10]}). "
+                "An intermediate generations file can be resumed with --load_generations_intermediate_paths."
+            )
+
         if self.accelerator.is_main_process:
             if not self.args.load_generations_path:
                 save_generations_path = f"{os.path.splitext(self.args.save_generations_path)[0]}_{task_name}.json"

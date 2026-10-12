@@ -29,6 +29,12 @@ class QuixBugs(Task):
                 "<commit_after>", 
                 "<|endoftext|>",
             ]
+        elif self.prompt.startswith("prompt_codex"):
+            # checked before "prompt", which is a prefix of "prompt_codex"
+            # https://arxiv.org/pdf/2111.03922.pdf
+            self.stop_words = [
+                "\nclass", "###", "///", "<|endoftext|>",
+            ]
         elif self.prompt.startswith("prompt"):
             self.stop_words = [
                 "\ndef",
@@ -40,11 +46,6 @@ class QuixBugs(Task):
                 "###",
                 "///",
                 "<|endoftext|>",
-            ]
-        elif self.prompt.startswith("prompt_codex"):
-            # https://arxiv.org/pdf/2111.03922.pdf
-            self.stop_words = [
-                "\nclass", "###", "///", "<|endoftext|>",
             ]
         else:
             raise ValueError(f"Unknown prompt: {self.prompt}")

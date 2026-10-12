@@ -419,6 +419,9 @@ def compute_beyond_eval(generations_list, reference_list, timeout=10):
     results = dict()
     for difficulty in ['Easy', "Medium", "Hard", "Average"]:
         total = np.array(scores[difficulty]['total_c'])
+        if len(total) == 0:
+            # no problem of this difficulty was evaluated (e.g. with --limit)
+            continue
         correct = np.array(scores[difficulty]['correct_c'])
         beyond = scores[difficulty]['beyond_c']
 
